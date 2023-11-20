@@ -1,0 +1,8 @@
+{
+    "width": 100,
+    "depth_common": 4,
+    "depth_phead": 1,
+    "depth_vhead": 1,
+    "use_batch_norm": false,
+    "batch_norm_momentum": 0.6
+}

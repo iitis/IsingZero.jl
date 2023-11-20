@@ -1,0 +1,22 @@
+[
+    {
+        "legend": "AlphaZero",
+        "avgr": 0,
+        "redundancy": 0.8823529411764706,
+        "rewards": [
+            0
+        ],
+        "baseline_rewards": null,
+        "time": 0.001060985
+    },
+    {
+        "legend": "Network Only",
+        "avgr": -8,
+        "redundancy": 0.23529411764705888,
+        "rewards": [
+            -8
+        ],
+        "baseline_rewards": null,
+        "time": 0.001047199
+    }
+]
