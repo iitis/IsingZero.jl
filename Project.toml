@@ -1,0 +1,4 @@
+name = "IsingZero"
+uuid = "ba0fd749-0bd9-4cfd-b70b-7f5c4485429a"
+authors = ["tomsmierz <smirzchalski.tomek@gmail.com>"]
+version = "0.1.0"
