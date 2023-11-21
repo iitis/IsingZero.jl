@@ -4,11 +4,6 @@ using Crayons
 
 const RL = CommonRLInterface
 
-# To avoid episodes of unbounded length, we put an arbitrary limit to the length of an
-# episode. Because time is not captured in the state, this introduces a slight bias in
-# the value function.
-const EPISODE_LENGTH_BOUND = 15
-
 mutable struct World <: AbstractEnv
   state::Int # The sum of the previous steps
   time::Int  # Count of the steps taken
@@ -25,13 +20,13 @@ end
 RL.actions(env::World) = [0, 1, 2]
 RL.observe(env::World) = env.state
 
-RL.terminated(env::World) = env.time > EPISODE_LENGTH_BOUND
+RL.terminated(env::World) = env.time > 10
 
 function RL.act!(env::World, a)
   env.state += a
   env.time += 1
   if env.state == 10
-    return 1
+    return 5 / env.time
   elseif env.state > 10
     return -1
   end
@@ -40,7 +35,7 @@ end
 
 @provide RL.player(env::World) = 1 # A one player game
 @provide RL.players(env::World) = [1]
-@provide RL.observations(env::World) = (env.state, env.time) #[SA[x, y] for x in 1:env.size[1], y in 1:env.size[2]]
+@provide RL.observations(env::World) = (env.state, env.time)
 @provide RL.clone(env::World) = World(env.state, env.state)
 @provide RL.state(env::World) = env.state
 @provide RL.setstate!(env::World, s) = (env.state = s)
@@ -66,7 +61,7 @@ const action_names = ["Stay", "Add One", "Add Two"]
 
 function GI.action_string(env::World, a)
   idx = findfirst(==(a), RL.actions(env))
-  return isnothing(idx) ? "?" : action_names[idx + 1]
+  return isnothing(idx) ? "?" : action_names[idx]
 end
 
 
@@ -76,7 +71,7 @@ function GI.parse_action(env::World, s)
 end
 
 function GI.read_state(env::World)
-    return nothing
+    return (env.state, env.time)
 end
 
 GI.heuristic_value(::World) = 0.
