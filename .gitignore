@@ -27,6 +27,4 @@ docs/site/
 # environment.
 Manifest.toml
 
-# Setting files
-.vscode/
 
