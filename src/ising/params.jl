@@ -1,3 +1,5 @@
+using AlphaZero
+
 Network = NetLib.SimpleNet
 
 netparams = NetLib.SimpleNetHP(
@@ -7,8 +9,8 @@ netparams = NetLib.SimpleNetHP(
 
 self_play = SelfPlayParams(
   sim=SimParams(
-    num_games=10000,
-    num_workers=1,
+    num_games=100000,
+    num_workers=10,
     batch_size=4,
     use_gpu=false,
     reset_every=16,

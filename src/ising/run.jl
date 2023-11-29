@@ -5,11 +5,9 @@ using AlphaZero: Scripts
 
 experiment = Experiment("QuboZero", GameSpec(), params, Network, netparams, benchmark)
 
+@show "train"
 Scripts.train(experiment)
-Scripts.train(experiment)
-Scripts.train(experiment)
-Scripts.train(experiment)
-Scripts.train(experiment)
+@show "explore"
 Scripts.explore(experiment)
 
 
