@@ -3,17 +3,17 @@ using AlphaZero
 Network = NetLib.SimpleNet
 
 netparams = NetLib.SimpleNetHP(
-  width=125,
+  width=256,
   depth_common=3,
   use_batch_norm=false)
 
 self_play = SelfPlayParams(
   sim=SimParams(
     num_games=100,
-    num_workers=2,
-    batch_size=1,
+    num_workers=224,
+    batch_size=64,
     use_gpu=false,
-    reset_every=1,
+    reset_every=1,# TODO: check it
     flip_probability=0.,
     alternate_colors=false),
 
@@ -38,7 +38,7 @@ arena = ArenaParams(
   update_threshold=0.00)
 
 learning = LearningParams(
-  use_gpu=true,
+  use_gpu=false,
   use_position_averaging=false,
   samples_weighing_policy=CONSTANT_WEIGHT,
   rewards_renormalization=1,
@@ -64,7 +64,7 @@ learning = LearningParams(
 benchmark_sim = SimParams(
   arena.sim;
   num_games=1,
-  num_workers=2,
+  num_workers=1,
   batch_size=1)
 
 benchmark = [

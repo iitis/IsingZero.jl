@@ -3,18 +3,18 @@ using LinearAlgebra
 using Base: @kwdef
 
 struct GameSpec <: GI.AbstractGameSpec
-  Q 
+  Q
   energy_solution
-  solution 
+  solution
 
   GameSpec() = begin
     N = 10
-    Q = triu(reshape(Array(1:N^2), (N, N))) .* repeat([1, -1], Int(N//2)) # Just a temporary, random QUBO
-    
+    Q = triu(reshape(Array(1:N^2), (N, N))) .* repeat([1, -1], Int(N // 2)) # Just a temporary, random QUBO
+
     # obrained with bruteforce
     energy_solution = -1172.0
     solution = [0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
-    
+
     new(Q, energy_solution, solution)
   end
 
@@ -36,8 +36,8 @@ end
 
 GI.spec(::GameEnv) = GameSpec()
 
-function GI.init(spec::GameSpec) 
-  x = random_x(size(spec.Q)[1]) # state
+function GI.init(spec::GameSpec)
+  x = random_x(size(spec.Q)[1])
   initial_energy = energy(x, spec.Q) # changed only during reset / clone
   best_found_energy = energy(x, spec.Q)
   time = 0
@@ -58,7 +58,8 @@ function GI.init(spec::GameSpec)
 end
 
 function GI.set_state!(env::GameEnv, state)
-  env.x = state
+  env.x = deepcopy(state.x)
+  env.Q = deepcopy(state.Q)
 end
 
 GI.two_players(::GameSpec) = false
@@ -66,8 +67,9 @@ GI.two_players(::GameSpec) = false
 GI.actions(spec::GameSpec) = [i for (i, _) in enumerate(spec.solution)]
 
 function GI.clone(env::GameEnv)
-  GameEnv(Q=env.Q, x=env.x, solution=env.solution, energy_solution=env.energy_solution, 
-  initial_energy=env.initial_energy, best_found_energy=env.best_found_energy, time=env.time)
+  GameEnv(Q=env.Q, x=deepcopy(env.x), solution=env.solution, energy_solution=env.energy_solution,
+    initial_energy=deepcopy(env.initial_energy), best_found_energy=deepcopy(env.best_found_energy), 
+    time=deepcopy(env.time))
 end
 
 history(env::GameEnv) = nothing
@@ -81,6 +83,7 @@ GI.actions_mask(env::GameEnv) = BitVector([1 for _ in env.x])
 valid_pos((col, row)) = 1 <= col <= NUM_COLS && 1 <= row <= NUM_ROWS
 
 function GI.play!(env::GameEnv, a)
+  env.x = deepcopy(env.x)
   env.x[a] = 1 - env.x[a]
   new_energy = energy(env.x, env.Q)
   env.best_found_energy = min(env.best_found_energy, new_energy)
@@ -88,7 +91,9 @@ function GI.play!(env::GameEnv, a)
   env.time += 1
 end
 
-GI.current_state(env::GameEnv) = env.x
+GI.current_state(env::GameEnv) = begin
+  return (Q=env.Q, x=env.x)
+end
 
 GI.white_playing(env::GameEnv) = true
 
@@ -96,7 +101,7 @@ GI.white_playing(env::GameEnv) = true
 ##### Reward shaping
 #####
 
-function GI.game_terminated(env::GameEnv) 
+function GI.game_terminated(env::GameEnv)
   env.time > EPISODE_LENGTH
 end
 
@@ -104,10 +109,10 @@ function GI.white_reward(env::GameEnv)
   if env.time < EPISODE_LENGTH
     return 0.0
   end
-  
-  println("testing for improvement: $(env.best_found_energy) vs $(env.initial_energy)")
+
+  # println("testing for improvement: $(env.best_found_energy) vs $(env.initial_energy)")
   if env.best_found_energy < env.initial_energy
-    println("found improvement: $(env.best_found_energy) < $(env.initial_energy)")
+    # println("found improvement: $(env.best_found_energy) < $(env.initial_energy)")
     return reward(env.initial_energy, env.energy_solution, env.best_found_energy)
   else
     return -1
@@ -131,7 +136,7 @@ function GI.vectorize_state(::GameSpec, state)
       error("Unsupported type: $(typeof(item))")
     end
   end
-  return vector
+  return Float32.(vector)
 end
 
 
@@ -153,6 +158,8 @@ function GI.render(env::GameEnv)
   println("env.x = $(env.x); env.time = $(env.time); env.best_found_energy = $(env.best_found_energy)")
 end
 
-function GI.read_state(env::GameSpec)
-  return (env.Q, env.x, env.solution, env.initial_energy, env.best_found_energy)
+function GI.read_state(spec::GameSpec)
+  nothing
 end
+
+GI.heuristic_value(env::GameEnv) = 0.0
