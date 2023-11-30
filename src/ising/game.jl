@@ -8,14 +8,18 @@ struct GameSpec <: GI.AbstractGameSpec
   solution 
 
   GameSpec() = begin
-    Q = triu(reshape(Array(1:25), (5, 5))) .* [1.0, -1.0, 1.0, -1.0, 1.0] # Just a temporary, random QUBO
-    energy_solution = -64.0
-    solution = [0, 1, 0, 1, 1]
+    N = 10
+    Q = triu(reshape(Array(1:N^2), (N, N))) .* repeat([1, -1], Int(N//2)) # Just a temporary, random QUBO
+    
+    # obrained with bruteforce
+    energy_solution = -1172.0
+    solution = [0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
+    
     new(Q, energy_solution, solution)
   end
 
 end
-const EPISODE_LENGTH = 3
+const EPISODE_LENGTH = 15
 energy(x, Q) = x' * Q * x
 random_x(n) = Array{Real}(abs.(rand(Int, n)) .% 2)
 reward(E_initial, E_target, E_current) = ((E_initial - E_current) / (E_initial - E_target))
@@ -59,7 +63,7 @@ end
 
 GI.two_players(::GameSpec) = false
 
-GI.actions(::GameSpec) = collect(1:5)
+GI.actions(spec::GameSpec) = [i for (i, _) in enumerate(spec.solution)]
 
 function GI.clone(env::GameEnv)
   GameEnv(Q=env.Q, x=env.x, solution=env.solution, energy_solution=env.energy_solution, 
@@ -97,14 +101,17 @@ function GI.game_terminated(env::GameEnv)
 end
 
 function GI.white_reward(env::GameEnv)
-  @show "testing for improvement: $(env.best_found_energy) vs $(env.initial_energy)"
+  if env.time < EPISODE_LENGTH
+    return 0.0
+  end
+  
+  println("testing for improvement: $(env.best_found_energy) vs $(env.initial_energy)")
   if env.best_found_energy < env.initial_energy
-    @show "found improvement: $(env.best_found_energy) < $(env.initial_energy)"
+    println("found improvement: $(env.best_found_energy) < $(env.initial_energy)")
     return reward(env.initial_energy, env.energy_solution, env.best_found_energy)
   else
     return -1
   end
-
 end
 
 #####
@@ -132,12 +139,12 @@ end
 ##### User interface
 #####
 
-function GI.action_string(env::GameSpec, a)
+function GI.action_string(spec::GameSpec, a)
   # TODO: why not game env available here?
   return "Flipped idx $a"
 end
 
-function GI.parse_action(::GameSpec, s)
+function GI.parse_action(spec::GameSpec, s)
   return parse(Int, s)
 end
 

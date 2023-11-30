@@ -1,3 +1,5 @@
+ENV["GKSwstype"] = 100
+
 include("game.jl")
 include("params.jl")
 
