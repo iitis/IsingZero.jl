@@ -3,41 +3,40 @@ using LinearAlgebra
 using Base: @kwdef
 
 struct GameSpec <: GI.AbstractGameSpec
-  Q
-  energy_solution
-  solution
+  Q::Matrix{Float64}
+  energy_solution::Float64
+  solution::Vector{Float64}
 
   GameSpec() = begin
     N = 10
-    Q = triu(reshape(Array(1:N^2), (N, N))) .* repeat([1, -1], Int(N // 2)) # Just a temporary, random QUBO
+    Q = Float64.(triu(reshape(Array(1:N^2), (N, N))) .* repeat([1, -1], Int(N // 2))) # Just a temporary, random QUBO
 
     # obrained with bruteforce
     energy_solution = -1172.0
-    solution = [0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
-
+    solution = Float64[0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
     new(Q, energy_solution, solution)
   end
 
 end
 const EPISODE_LENGTH = 15
 energy(x, Q) = x' * Q * x
-random_x(n) = Array{Real}(abs.(rand(Int, n)) .% 2)
+random_x(n) = rand([0., 1.], n)
 reward(E_initial, E_target, E_current) = ((E_initial - E_current) / (E_initial - E_target))
 
-@kwdef mutable struct GameEnv <: GI.AbstractGameEnv
-  Q::Array{Real,2}
-  x::Array{Real,1}
-  solution::Array{Real,1}
-  energy_solution::Real
-  initial_energy::Real # Used to compute reward, if an improvement is found
-  best_found_energy::Real
+@kwdef mutable struct GameEnv{T} <: GI.AbstractGameEnv
+  Q::Matrix{T}
+  x::Vector{T}
+  solution::Vector{T}
+  energy_solution::T
+  initial_energy::T # Used to compute reward, if an improvement is found
+  best_found_energy::T
   time::Int  # Count of the steps taken
 end
 
 GI.spec(::GameEnv) = GameSpec()
 
 function GI.init(spec::GameSpec)
-  x = random_x(size(spec.Q)[1])
+  x = random_x(size(spec.Q, 1))
   initial_energy = energy(x, spec.Q) # changed only during reset / clone
   best_found_energy = energy(x, spec.Q)
   time = 0
@@ -45,7 +44,6 @@ function GI.init(spec::GameSpec)
   # TODO: add to input
   # 1. time since last improvement?
   # 2. ΔE?
-
   return GameEnv(
     Q=spec.Q,
     x=x,
@@ -72,7 +70,7 @@ function GI.clone(env::GameEnv)
     time=deepcopy(env.time))
 end
 
-history(env::GameEnv) = nothing
+history(::GameEnv) = nothing
 
 #####
 ##### Defining game rules
@@ -144,12 +142,12 @@ end
 ##### User interface
 #####
 
-function GI.action_string(spec::GameSpec, a)
+function GI.action_string(::GameSpec, a)
   # TODO: why not game env available here?
   return "Flipped idx $a"
 end
 
-function GI.parse_action(spec::GameSpec, s)
+function GI.parse_action(::GameSpec, s)
   return parse(Int, s)
 end
 
@@ -158,7 +156,7 @@ function GI.render(env::GameEnv)
   println("env.x = $(env.x); env.time = $(env.time); env.best_found_energy = $(env.best_found_energy)")
 end
 
-function GI.read_state(spec::GameSpec)
+function GI.read_state(::GameSpec)
   nothing
 end
 

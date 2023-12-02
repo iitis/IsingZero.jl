@@ -8,7 +8,6 @@ using AlphaZero: Scripts
 # Scripts.test_game("connect-four")
 
 experiment = Experiment("QuboZero", GameSpec(), params, Network, netparams, benchmark)
-
 # @show "test_game"
 # Scripts.test_game(experiment)
 @show "train"
