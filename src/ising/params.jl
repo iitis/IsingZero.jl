@@ -3,7 +3,7 @@ using AlphaZero
 Network = NetLib.SimpleNet
 
 netparams = NetLib.SimpleNetHP(
-  width=256,
+  width=512,
   depth_common=3,
   use_batch_norm=false)
 
@@ -55,7 +55,7 @@ learning = LearningParams(
   arena=arena,
   self_play=self_play,
   learning=learning,
-  num_iters=20,
+  num_iters=50,
   memory_analysis=nothing,
 #   ternary_outcome=false,
   use_symmetries=false,

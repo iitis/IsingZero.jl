@@ -2,6 +2,12 @@ using AlphaZero
 using LinearAlgebra
 using Base: @kwdef
 
+#####
+##### Game Specifications
+#####
+
+const EPISODE_LENGTH = 5
+
 struct GameSpec <: GI.AbstractGameSpec
   Q::Matrix{Float64}
   energy_solution::Float64
@@ -18,7 +24,34 @@ struct GameSpec <: GI.AbstractGameSpec
   end
 
 end
-const EPISODE_LENGTH = 15
+
+GI.two_players(::GameSpec) = false
+GI.actions(spec::GameSpec) = [i for (i, _) in enumerate(spec.solution)]
+
+
+#####
+##### ML interface
+#####
+
+function GI.vectorize_state(::GameSpec, state)
+  vector = []
+  for item in state
+    if item isa Number
+      push!(vector, item)
+    elseif item isa AbstractArray
+      flattened = vec(item)
+      append!(vector, flattened)
+    else
+      error("Unsupported type: $(typeof(item))")
+    end
+  end
+  return Float32.(vector)
+end
+
+#####
+##### Game Environment
+#####
+
 energy(x, Q) = x' * Q * x
 random_x(n) = rand([0., 1.], n)
 reward(E_initial, E_target, E_current) = ((E_initial - E_current) / (E_initial - E_target))
@@ -31,6 +64,7 @@ reward(E_initial, E_target, E_current) = ((E_initial - E_current) / (E_initial -
   initial_energy::T # Used to compute reward, if an improvement is found
   best_found_energy::T
   time::Int  # Count of the steps taken
+  history::Vector
 end
 
 GI.spec(::GameEnv) = GameSpec()
@@ -40,6 +74,7 @@ function GI.init(spec::GameSpec)
   initial_energy = energy(x, spec.Q) # changed only during reset / clone
   best_found_energy = energy(x, spec.Q)
   time = 0
+  history = Vector{Int}()
 
   # TODO: add to input
   # 1. time since last improvement?
@@ -51,7 +86,8 @@ function GI.init(spec::GameSpec)
     energy_solution=spec.energy_solution,
     initial_energy=initial_energy,
     best_found_energy=best_found_energy,
-    time=time
+    time=time,
+    history=history
   )
 end
 
@@ -60,14 +96,13 @@ function GI.set_state!(env::GameEnv, state)
   env.Q = deepcopy(state.Q)
 end
 
-GI.two_players(::GameSpec) = false
 
-GI.actions(spec::GameSpec) = [i for (i, _) in enumerate(spec.solution)]
+
 
 function GI.clone(env::GameEnv)
   GameEnv(Q=env.Q, x=deepcopy(env.x), solution=env.solution, energy_solution=env.energy_solution,
     initial_energy=deepcopy(env.initial_energy), best_found_energy=deepcopy(env.best_found_energy), 
-    time=deepcopy(env.time))
+    time=deepcopy(env.time), history=deepcopy(env.history))
 end
 
 history(::GameEnv) = nothing
@@ -76,8 +111,9 @@ history(::GameEnv) = nothing
 ##### Defining game rules
 #####
 
-GI.actions_mask(env::GameEnv) = BitVector([1 for _ in env.x])
+#GI.actions_mask(env::GameEnv) = Vector{Bool}([action in env.history ? false : true for action in env.x])
 
+GI.actions_mask(env::GameEnv) = BitVector([1 for _ in env.x])
 valid_pos((col, row)) = 1 <= col <= NUM_COLS && 1 <= row <= NUM_ROWS
 
 function GI.play!(env::GameEnv, a)
@@ -85,6 +121,7 @@ function GI.play!(env::GameEnv, a)
   env.x[a] = 1 - env.x[a]
   new_energy = energy(env.x, env.Q)
   env.best_found_energy = min(env.best_found_energy, new_energy)
+  push!(env.history, a)
 
   env.time += 1
 end
@@ -117,25 +154,6 @@ function GI.white_reward(env::GameEnv)
   end
 end
 
-#####
-##### ML interface
-#####
-
-
-function GI.vectorize_state(::GameSpec, state)
-  vector = []
-  for item in state
-    if item isa Number
-      push!(vector, item)
-    elseif item isa AbstractArray
-      flattened = vec(item)
-      append!(vector, flattened)
-    else
-      error("Unsupported type: $(typeof(item))")
-    end
-  end
-  return Float32.(vector)
-end
 
 
 #####
@@ -144,7 +162,7 @@ end
 
 function GI.action_string(::GameSpec, a)
   # TODO: why not game env available here?
-  return "Flipped idx $a"
+  return "$a"
 end
 
 function GI.parse_action(::GameSpec, s)
@@ -153,7 +171,7 @@ end
 
 function GI.render(env::GameEnv)
   @show "RL.render"
-  println("env.x = $(env.x); env.time = $(env.time); env.best_found_energy = $(env.best_found_energy)")
+  println("env.x = $(env.x); energy = $(energy(env.x, env.Q)) env.time = $(env.time); env.best_found_energy = $(env.best_found_energy)")
 end
 
 function GI.read_state(::GameSpec)
