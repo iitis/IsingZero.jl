@@ -1,5 +1,6 @@
 ENV["GKSwstype"] = 100
 
+include("qubo_operations.jl")
 include("game.jl")
 include("params.jl")
 
@@ -16,8 +17,4 @@ Scripts.train(experiment)
 @show "explore"
 Scripts.explore(experiment)
 
-
-# TODO:
-# 1. Make CUDA training work (scalar operation fails)
-# 2. 
 
