@@ -4,35 +4,44 @@ using Base: @kwdef
 using DataStructures: CircularBuffer
 
 const N = 10
-const Q = triu(reshape(Array(1:N^2), (10, 10))) .* repeat([1, -1], 5)
-const Q_upper_map = vec(triu(ones(Bool, size(Q))))
+const Q_upper_map = vec(triu(ones(Bool, (N, N))))
 
 struct GameSpec <: GI.AbstractGameSpec
-  energy_solution
-  solution
   tabu_buffer_size
   episode_length
 
   GameSpec() = begin
-    # solution obtained with bruteforce
-    energy_solution = -1172.0
-    solution = [0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
 
-    tabu_buffer_size = 4
+    # # solution obtained with bruteforce
+    # energy_solution = -1172.0
+    # solution = [0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
+
+    tabu_buffer_size = 2
     episode_length = 7
     
-    new(energy_solution, solution, tabu_buffer_size, episode_length)
+    new(tabu_buffer_size, episode_length)
   end
 end
 
 energy(x, Q) = x' * Q * x
-random_x(n) = (abs.(rand(Int, n)) .% 2)
+
+function random_x(n, Q, energy_solution)
+  x = (abs.(rand(Int, n)) .% 2)
+  while energy(x, Q) == energy_solution
+    x = (abs.(rand(Int, n)) .% 2)
+  end
+  # TODO: if Q = 0, then we get stuck in an infinite loop :)
+  x
+end
+
 linear_reward(E_initial, E_target, E_current) = ((E_initial - E_current) / (E_initial - E_target))
 const AVAILABLE_ACTIONS = collect(1:N)
 
 @kwdef mutable struct GameEnv <: GI.AbstractGameEnv
   x::Array{Float64,1}
   delta_E::Array{Float64,1}
+  Q::Array{Float64, 2}
+  energy_solution::Float64
   initial_energy::Float64 # Used to compute reward, if an improvement is found
   best_found_energy::Float64
   time::Int  # Count of the steps taken
@@ -42,17 +51,20 @@ end
 GI.spec(::GameEnv) = GameSpec()
 
 function GI.init(spec::GameSpec)
-  x = random_x(size(Q)[1])
+  Q, energy_solution = get_training_Q(Float64, N)
+  x = random_x(N, Q, energy_solution)
   initial_energy = energy(x, Q) # changed only during reset / clone
   best_found_energy = copy(initial_energy)
   time = 0
   delta_E = compute_delta_E(Q, x)
   tabu_buffer = CircularBuffer{Int32}(spec.tabu_buffer_size)
-  
+
   # TODO: add to input
   # 1. time since last improvement?
   # 3. ΔE_{t} - ΔE_{t-1}?: mówi o zmiennych, na które ma wpływ ostatnia zmiane
   ge = GameEnv(
+    Q=Q,
+    energy_solution=energy_solution,
     x=x,
     delta_E=delta_E,
     initial_energy=initial_energy,
@@ -64,6 +76,7 @@ function GI.init(spec::GameSpec)
 end
 
 function GI.set_state!(env::GameEnv, state)
+  env.Q = deepcopy(state.Q)
   env.x = deepcopy(state.x)
   env.delta_E = deepcopy(state.delta_E)
   env.tabu_buffer = deepcopy(state.tabu_buffer)
@@ -78,6 +91,8 @@ GI.actions(spec::GameSpec) = AVAILABLE_ACTIONS
 function GI.clone(env::GameEnv)
 
   GameEnv(x=deepcopy(env.x), 
+          Q=deepcopy(env.Q), 
+          energy_solution=deepcopy(env.energy_solution), 
           delta_E=deepcopy(env.delta_E), 
           tabu_buffer=deepcopy(env.tabu_buffer),
           initial_energy=deepcopy(env.initial_energy),
@@ -102,15 +117,15 @@ function GI.play!(env::GameEnv, a)
   push!(env.tabu_buffer, a)
   env.time += 1
   env.x = deepcopy(env.x)
-  update_delta_E!(env.delta_E, Q, env.x, a)
+  update_delta_E!(env.delta_E, env.Q, env.x, a)
   env.x[a] = 1 - env.x[a]
-  new_energy = energy(env.x, Q)
+  new_energy = energy(env.x, env.Q)
   env.best_found_energy = min(env.best_found_energy, new_energy)
 end
 
 GI.current_state(env::GameEnv) = begin
   return (
-    Q=Q,
+    Q=env.Q,
     x=deepcopy(env.x),
     delta_E=deepcopy(env.delta_E),
     best_found_energy=deepcopy(env.best_found_energy),
@@ -136,21 +151,12 @@ function GI.white_reward(env::GameEnv)
     return 0.0
   end
 
-  # println("testing for improvement: $(env.best_found_energy) vs $(env.initial_energy)")
-  if env.best_found_energy < env.initial_energy
-    
-    # println("found improvement: $(env.best_found_energy) < $(env.initial_energy)")
-    r = linear_reward(env.initial_energy, gspec.energy_solution, env.best_found_energy)
-    if r > 0
-      r = r^2
-    end
-    if r > 1
-      println("r > 1: env.best_found_energy=$(env.best_found_energy)")
-    end
-    return r
-  else
-    return -1
+  if env.best_found_energy >= env.initial_energy
+     return -1
   end
+    
+  r = linear_reward(env.initial_energy, env.energy_solution, env.best_found_energy)
+  return r
 end
 
 #####
@@ -167,7 +173,7 @@ function GI.vectorize_state(::GameSpec, state)
   buffer_clone = deepcopy(state.tabu_buffer)
   fill!(buffer_clone, -10) # -10 represents a value that was not filled in yet.
   sort!(buffer_clone) 
-  state_contributors = [Q_elements, state.x, state.delta_E, found_improvement, buffer_clone]
+  state_contributors = [Q_elements, state.x,  found_improvement, buffer_clone] # state.delta_E,
 
   for item in state_contributors
     if item isa Number
