@@ -1,12 +1,18 @@
 using AlphaZero
 using AlphaZero: CyclicSchedule
+using Flux
+using AlphaZero: Adam
+
+# TODO: look into SamplesWeighingPolicy in AlphaZero.jl? 
+# TODO:  
 
 self_play = SelfPlayParams(
   sim=SimParams(
     num_games=4096,
     num_workers=512,
-    batch_size=128,
-    use_gpu=true,
+    batch_size=1,
+    use_gpu=false,
+    # use_gpu=true,
     reset_every=1,# empty MCTS tree every 1 game # TODO???
     flip_probability=0.0,
     alternate_colors=false), mcts=MctsParams(
@@ -20,8 +26,9 @@ arena = ArenaParams(
   sim=SimParams(
     num_games=256,
     num_workers=64,
-    batch_size=32,
-    use_gpu=true,
+    batch_size=1,
+    use_gpu=false,
+    # use_gpu=true,
     reset_every=1,
     flip_probability=0.0,
     alternate_colors=false),
@@ -29,13 +36,14 @@ arena = ArenaParams(
   update_threshold=0.00)
 
 learning = LearningParams(
-  use_gpu=true,
-  use_position_averaging=false,
+  use_gpu=false,
+  # use_gpu=true,
+  use_position_averaging=false, # TODO: dlaczego false???
   samples_weighing_policy=CONSTANT_WEIGHT,
   rewards_renormalization=1,
   l2_regularization=1e-4,
   optimiser=Adam(lr=1e-3),
-  batch_size=32,
+  batch_size=1,
   loss_computation_batch_size=32,
   nonvalidity_penalty=0.3,
   min_checkpoints_per_epoch=1,
@@ -58,7 +66,7 @@ benchmark_sim = SimParams(
   arena.sim;
   num_games=64*3,
   num_workers=64,
-  batch_size=32)
+  batch_size=1)
 
 
 # # Explanation (single-player games)

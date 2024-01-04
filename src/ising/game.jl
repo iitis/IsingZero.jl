@@ -2,24 +2,21 @@ using AlphaZero
 using LinearAlgebra
 using Base: @kwdef
 using DataStructures: CircularBuffer
+using GraphNeuralNetworks
 
-const N = 10
-const Q_upper_map = vec(triu(ones(Bool, (N, N))))
 
 struct GameSpec <: GI.AbstractGameSpec
   tabu_buffer_size
   episode_length
+  problem_size::Int
+  Q_upper_map
 
-  GameSpec() = begin
-
-    # # solution obtained with bruteforce
-    # energy_solution = -1172.0
-    # solution = [0, 1, 0, 1, 0, 1, 0, 1, 1, 1]
-
+  function GameSpec()
     tabu_buffer_size = 2
     episode_length = 7
-    
-    new(tabu_buffer_size, episode_length)
+    problem_size = 10
+    Q_upper_map = vec(triu(ones(Bool, (problem_size, problem_size))))
+    new(tabu_buffer_size, episode_length, problem_size, Q_upper_map)
   end
 end
 
@@ -35,7 +32,6 @@ function random_x(n, Q, energy_solution)
 end
 
 linear_reward(E_initial, E_target, E_current) = ((E_initial - E_current) / (E_initial - E_target))
-const AVAILABLE_ACTIONS = collect(1:N)
 
 @kwdef mutable struct GameEnv <: GI.AbstractGameEnv
   x::Array{Float64,1}
@@ -51,8 +47,8 @@ end
 GI.spec(::GameEnv) = GameSpec()
 
 function GI.init(spec::GameSpec)
-  Q, energy_solution = get_training_Q(Float64, N)
-  x = random_x(N, Q, energy_solution)
+  Q, energy_solution = get_training_Q(Float64, spec.problem_size)
+  x = random_x(spec.problem_size, Q, energy_solution)
   initial_energy = energy(x, Q) # changed only during reset / clone
   best_found_energy = copy(initial_energy)
   time = 0
@@ -87,7 +83,7 @@ end
 GI.two_players(::GameSpec) = false
 
 
-GI.actions(spec::GameSpec) = AVAILABLE_ACTIONS
+GI.actions(spec::GameSpec) = collect(1:spec.problem_size)
 function GI.clone(env::GameEnv)
 
   GameEnv(x=deepcopy(env.x), 
@@ -164,28 +160,44 @@ end
 #####
 
 
-function GI.vectorize_state(::GameSpec, state)
-  vector = []
+# function GNNGraph_to_vec(g::GNNGraph)
 
-  Q_elements = vec(state.Q)[Q_upper_map]
+# end
 
-  found_improvement = state.best_found_energy < state.initial_energy
-  buffer_clone = deepcopy(state.tabu_buffer)
-  fill!(buffer_clone, -10) # -10 represents a value that was not filled in yet.
-  sort!(buffer_clone) 
-  state_contributors = [Q_elements, state.x,  found_improvement, buffer_clone] # state.delta_E,
+# function vec_to_GNNGraph(vec::Vector{Flaot32})
+#     node_count = Int(vec[0])
+#     node_feature_
+# end
 
-  for item in state_contributors
-    if item isa Number
-      push!(vector, item)
-    elseif item isa AbstractArray
-      flattened = vec(item)
-      append!(vector, flattened)
-    else
-      error("Unsupported type: $(typeof(item))")
-    end
-  end
-  return Float32.(vector)
+function GI.vectorize_state(spec::GameSpec, state)
+  # TODO: make the GNN representing the actual game
+  @show state
+  weights = state.Q
+  node_features_data = reshape(state.x, (1, :))
+  adj = reshape((Int.(spec.Q_upper_map)), (spec.problem_size, spec.problem_size))
+  g =  GNNGraph(adj, ndata=node_features_data)
+  return encode_gnngraph(g)
+  # vector = []
+
+  # Q_elements = spec.Q_upper_map
+
+  # found_improvement = state.best_found_energy < state.initial_energy
+  # buffer_clone = deepcopy(state.tabu_buffer)
+  # fill!(buffer_clone, -10) # -10 represents a value that was not filled in yet.
+  # sort!(buffer_clone) 
+  # state_contributors = [Q_elements, state.x,  found_improvement, buffer_clone] # state.delta_E,
+
+  # for item in state_contributors
+  #   if item isa Number
+  #     push!(vector, item)
+  #   elseif item isa AbstractArray
+  #     flattened = vec(item)
+  #     append!(vector, flattened)
+  #   else
+  #     error("Unsupported type: $(typeof(item))")
+  #   end
+  # end
+  # return Float32.(vector)
 end
 
 
@@ -207,6 +219,7 @@ function GI.render(env::GameEnv)
 end
 
 function GI.read_state(spec::GameSpec)
+  @show "GI.read_state was used. What now?" 
   nothing
 end
 

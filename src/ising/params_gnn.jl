@@ -1,38 +1,9 @@
-# Network = NetLib.SimpleNet
-
-# netparams = NetLib.SimpleNetHP(
-#   width=512,
-#   depth_common=5,
-#   use_batch_norm=true,
-#   depth_phead=2,
-#   depth_vhead=2
-#   )
+using GraphNeuralNetworks
+using AlphaZero: NetLib
+using Statistics: mean
 
 
-@kwdef struct GNN_HP
-    hidden_feature_dim::Int = 8
-
-end
-
-
-"""
-    GNN_HP
-
-Hyperparameters for the GNN architecture.
-
-| Parameter                     | Description                                  |
-|:------------------------------|:---------------------------------------------|
-| `hidden_feature_dim :: Int`   | TODO                                         |
-"""
-
-"""
-    SimpleNet <: TwoHeadNetwork
-
-A simple two-headed architecture with only dense layers.
-"""
-
-
-mutable struct GNN_Net <: TwoHeadNetwork
+mutable struct GNN_Net <: NetLib.TwoHeadNetwork
   gspec
   hyper
   common
@@ -40,39 +11,51 @@ mutable struct GNN_Net <: TwoHeadNetwork
   phead
 end
 
-function GNN_Net(gspec::AbstractGameSpec, hyper::GNN_HP)
-  bnmom = hyper.batch_norm_momentum
-  function make_dense(indim, outdim)
-    if hyper.use_batch_norm
-      Chain(
-        Dense(indim, outdim),
-        BatchNorm(outdim, relu, momentum=bnmom))
-    else
-      Dense(indim, outdim, relu)
-    end
-  end
-  indim = prod(GI.state_dim(gspec))
-  outdim = GI.num_actions(gspec)
-  hsize = hyper.width
-  hlayers(depth) = [make_dense(hsize, hsize) for i in 1:depth]
-  common = Chain(
-    flatten,
-    make_dense(indim, hsize),
-    hlayers(hyper.depth_common)...)
-  vhead = Chain(
-    hlayers(hyper.depth_vhead)...,
-    Dense(hsize, 1, tanh))
-  phead = Chain(
-    hlayers(hyper.depth_phead)...,
-    Dense(hsize, outdim),
-    softmax)
-  SimpleNet(gspec, hyper, common, vhead, phead)
+@kwdef struct GNN_HP
+  hidden_dim1::Int = 320
+  hidden_dim2::Int = 10
 end
 
-Network.HyperParams(::Type{SimpleNet}) = SimpleNetHP
+# hidden_dim1::Int = 8
+# hidden_dim2::Int = 10
+# state = GNNGraph(320, 1760) with x: 1×320 data
+# DimensionMismatch: A has dimensions (8,10) but B has dimensions (1,320)
 
-function Base.copy(nn::SimpleNet)
-  return SimpleNet(
+# hidden_dim1::Int = 15
+# hidden_dim2::Int = 10
+
+function GNN_Net(gspec::AbstractGameSpec, hparams::GNN_HP)
+  common = GNNChain(GCNConv(1 => hparams.hidden_dim1, relu),
+    GCNConv(hparams.hidden_dim1 => hparams.hidden_dim2, relu),
+    GCNConv(hparams.hidden_dim2 => hparams.hidden_dim2, relu),
+    GlobalPool(mean)
+  )
+  vhead = Dense(hparams.hidden_dim2 => 1, tanh)
+  # TODO: replace this layer with extra GCNConv and smart pooling to get rid of node_count
+  phead = Dense(hparams.hidden_dim2 => gspec.problem_size)
+  return GNN_Net(gspec, hparams, common, vhead, phead)
+end
+
+# function state_to_GNN_graph(state)
+  
+# end
+
+function Network.forward(nn::GNN_Net, state)
+  g = decode_gnngraph(state)
+
+  c = nn.common(g)
+  v = nn.vhead(c.gdata.u)
+  p_linear = nn.phead(c.gdata.u)
+  p = softmax(p_linear)
+  # TODO do we need to reshape p, v? currently it is p_shape = (10, 1), v_shape = (1, 1). Seems fine.
+  return (p, v)
+end
+
+
+Network.HyperParams(::Type{GNN_Net}) = GNN_HP
+
+function Base.copy(nn::GNN_Net)
+  return GNN_Net(
     nn.gspec,
     nn.hyper,
     deepcopy(nn.common),
@@ -80,3 +63,8 @@ function Base.copy(nn::SimpleNet)
     deepcopy(nn.phead)
   )
 end
+
+
+netparams = GNN_HP()
+
+Network.on_gpu(nn::GNN_Net) = false
