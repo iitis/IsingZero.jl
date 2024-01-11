@@ -12,6 +12,8 @@ mutable struct GNN_Net <: NetLib.TwoHeadNetwork
 end
 
 @kwdef struct GNN_HP
+  input_node_feature_count::Int = 4
+  edge_feature_dim::Int = 1
   hidden_dim1::Int = 320
   hidden_dim2::Int = 10
 end
@@ -25,9 +27,10 @@ end
 # hidden_dim2::Int = 10
 
 function GNN_Net(gspec::AbstractGameSpec, hparams::GNN_HP)
-  common = GNNChain(GCNConv(1 => hparams.hidden_dim1, relu),
-    GCNConv(hparams.hidden_dim1 => hparams.hidden_dim2, relu),
-    GCNConv(hparams.hidden_dim2 => hparams.hidden_dim2, relu),
+  common = GNNChain(
+    GATConv((hparams.input_node_feature_count, hparams.edge_feature_dim) => hparams.hidden_dim1, relu, add_self_loops=false),
+    GATConv((hparams.hidden_dim1, hparams.edge_feature_dim) => hparams.hidden_dim2, relu, add_self_loops=false),
+    GATConv((hparams.hidden_dim2, hparams.edge_feature_dim) => hparams.hidden_dim2, relu, add_self_loops=false),
     GlobalPool(mean)
   )
   vhead = Dense(hparams.hidden_dim2 => 1, tanh)
@@ -36,9 +39,6 @@ function GNN_Net(gspec::AbstractGameSpec, hparams::GNN_HP)
   return GNN_Net(gspec, hparams, common, vhead, phead)
 end
 
-# function state_to_GNN_graph(state)
-  
-# end
 
 function Network.forward(nn::GNN_Net, state)
   g = decode_gnngraph(state)
@@ -47,7 +47,6 @@ function Network.forward(nn::GNN_Net, state)
   v = nn.vhead(c.gdata.u)
   p_linear = nn.phead(c.gdata.u)
   p = softmax(p_linear)
-  # TODO do we need to reshape p, v? currently it is p_shape = (10, 1), v_shape = (1, 1). Seems fine.
   return (p, v)
 end
 

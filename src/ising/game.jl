@@ -103,8 +103,8 @@ history(::GameEnv) = nothing
 #####
 
 function GI.actions_mask(env::GameEnv)
-  mask = BitVector([1 for _ in env.x])
-  mask[env.tabu_buffer] .= 0
+  mask = Bool.([1 for _ in env.x])
+  mask[env.tabu_buffer] .= false
   return mask 
 end
 
@@ -170,34 +170,32 @@ end
 # end
 
 function GI.vectorize_state(spec::GameSpec, state)
-  # TODO: make the GNN representing the actual game
-  @show state
-  weights = state.Q
-  node_features_data = reshape(state.x, (1, :))
-  adj = reshape((Int.(spec.Q_upper_map)), (spec.problem_size, spec.problem_size))
-  g =  GNNGraph(adj, ndata=node_features_data)
+  Q_diag_1D = diag(state.Q)
+  Q_no_diag_2D = copy(state.Q)
+  Q_no_diag_2D[diagind(state.Q)] .= 0
+
+  edge_features_data = vec(Q_no_diag_2D)'
+
+  buffer_node_feature_1D = Float32[(n in state.tabu_buffer) for n in 1:spec.problem_size]
+  x_node_feature_1D = state.x
+  delta_E_feature_1D = state.delta_E
+  node_features_data = vcat(buffer_node_feature_1D', x_node_feature_1D',  delta_E_feature_1D', Q_diag_1D') # Shape is (FEATURE_COUNT, NODE_COUNT)
+
+  adj = state.Q .!== 0
+  adj = sign.(adj + adj')
+  g =  GNNGraph(adj, ndata=node_features_data, edata=edge_features_data)
+
+
+  # 1. GNNGraph 
+  #    a) edge_features == Q bez przekątnej
+  #    b) node features: x, buffer (bool), delta_E?
+  # 2. Zaadaptować sieć:
+  #   https://carlolucibello.github.io/GraphNeuralNetworks.jl/dev/api/conv/#Convolutional-Layers
+  #   Jako pierwsze warstwy wybrać te z edge features
+  #   GAT jako default
+  # 3. fix bug with batch size > 1
+
   return encode_gnngraph(g)
-  # vector = []
-
-  # Q_elements = spec.Q_upper_map
-
-  # found_improvement = state.best_found_energy < state.initial_energy
-  # buffer_clone = deepcopy(state.tabu_buffer)
-  # fill!(buffer_clone, -10) # -10 represents a value that was not filled in yet.
-  # sort!(buffer_clone) 
-  # state_contributors = [Q_elements, state.x,  found_improvement, buffer_clone] # state.delta_E,
-
-  # for item in state_contributors
-  #   if item isa Number
-  #     push!(vector, item)
-  #   elseif item isa AbstractArray
-  #     flattened = vec(item)
-  #     append!(vector, flattened)
-  #   else
-  #     error("Unsupported type: $(typeof(item))")
-  #   end
-  # end
-  # return Float32.(vector)
 end
 
 

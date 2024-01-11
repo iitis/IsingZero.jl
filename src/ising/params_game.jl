@@ -8,7 +8,7 @@ using AlphaZero: Adam
 
 self_play = SelfPlayParams(
   sim=SimParams(
-    num_games=4096,
+    num_games=1024,
     num_workers=512,
     batch_size=1,
     use_gpu=false,
@@ -24,7 +24,7 @@ self_play = SelfPlayParams(
 
 arena = ArenaParams(
   sim=SimParams(
-    num_games=256,
+    num_games=16,
     num_workers=64,
     batch_size=1,
     use_gpu=false,
@@ -42,7 +42,7 @@ learning = LearningParams(
   samples_weighing_policy=CONSTANT_WEIGHT,
   rewards_renormalization=1,
   l2_regularization=1e-4,
-  optimiser=Adam(lr=1e-3),
+  optimiser=Adam(lr=1e-4),
   batch_size=1,
   loss_computation_batch_size=32,
   nonvalidity_penalty=0.3,

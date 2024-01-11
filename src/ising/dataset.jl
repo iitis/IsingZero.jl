@@ -21,7 +21,7 @@ function get_training_Q(::Type{T}, size) where T
         end
     end
     
-    spawn_new_Q = rand() < (1 / 300_000)
+    spawn_new_Q = false  #rand() < (1 / 500_000)
     if spawn_new_Q
         @info "Adding new Q to known_Qs, it now has the length of $(length(known_Qs))"
         Q, x = _generate_planted_qubo_CPU(T, size)
@@ -31,6 +31,22 @@ function get_training_Q(::Type{T}, size) where T
     else
         return rand(known_Qs)
     end
+end
+
+
+function rand_adj_matrix(n::Int, p::Float64=0.5)
+    A = zeros(Int, n, n)
+
+    # Populate the upper triangle of the matrix
+    for i in 1:n-1
+        for j in i+1:n
+            if rand() < p
+                A[i, j] = 1
+                A[j, i] = 1  # Symmetry for undirected graph
+            end
+        end
+    end
+    return sign.(A + A')
 end
 
 
