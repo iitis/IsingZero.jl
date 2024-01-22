@@ -8,9 +8,9 @@ using AlphaZero: Adam
 
 self_play = SelfPlayParams(
   sim=SimParams(
-    num_games=1024,
-    num_workers=512,
-    batch_size=1,
+    num_games=32,
+    num_workers=16,
+    batch_size=16,
     use_gpu=false,
     # use_gpu=true,
     reset_every=1,# empty MCTS tree every 1 game # TODO???
@@ -24,9 +24,9 @@ self_play = SelfPlayParams(
 
 arena = ArenaParams(
   sim=SimParams(
-    num_games=16,
-    num_workers=64,
-    batch_size=1,
+    num_games=32,
+    num_workers=16,
+    batch_size=16,
     use_gpu=false,
     # use_gpu=true,
     reset_every=1,
@@ -43,8 +43,8 @@ learning = LearningParams(
   rewards_renormalization=1,
   l2_regularization=1e-4,
   optimiser=Adam(lr=1e-4),
-  batch_size=1,
-  loss_computation_batch_size=32,
+  batch_size=16,
+  loss_computation_batch_size=17,
   nonvalidity_penalty=0.3,
   min_checkpoints_per_epoch=1,
   max_batches_per_checkpoint=5_000,
@@ -65,8 +65,8 @@ params = Params(
 benchmark_sim = SimParams(
   arena.sim;
   num_games=64*3,
-  num_workers=64,
-  batch_size=1)
+  num_workers=32,
+  batch_size=32)
 
 
 # # Explanation (single-player games)

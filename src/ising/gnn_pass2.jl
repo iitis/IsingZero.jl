@@ -1,7 +1,16 @@
 using Flux
 using GraphNeuralNetworks
 using Statistics
+using AlphaZero: Network
+using DataStructures: CircularBuffer
+
+include("dataset.jl")
 include("gnngraph_operations.jl")
+include("qubo_operations.jl")
+include("game.jl")
+include("params_game.jl")
+include("params_gnn.jl")
+
 
 function rand_adj_matrix(n::Int, p::Float64=0.5)
     A = zeros(Int, n, n)
@@ -18,6 +27,7 @@ function rand_adj_matrix(n::Int, p::Float64=0.5)
     return sign.(A + A')
 end
 
+
 node_count = 10
 h1 = 5
 h2 = 15
@@ -32,10 +42,15 @@ edge_features_data = rand(Float32, edge_feature_count, edge_count)
 
 
 # DATA DEFINITION
-input_graph1 = GNNGraph(adj_mat, ndata=node_features_data, edata=edge_features_data)
-input_graph2 = GNNGraph(adj_mat, ndata=node_features_data, edata=edge_features_data)
+# input_graph1 = GNNGraph(adj_mat, ndata=node_features_data, edata=edge_features_data)
+# input_graph2 = GNNGraph(adj_mat, ndata=node_features_data, edata=edge_features_data)
 
-batch = [input_graph1, input_graph2]
+d1 = (Q=ones(node_count, node_count), x=ones(node_count), delta_E = zeros(node_count), tabu_buffer=CircularBuffer{Int32}(5), 
+ best_found_energy=-1000, initial_energy=0)
+d2 = (Q=ones(node_count, node_count), x=ones(node_count) .* -1, delta_E = ones(node_count), tabu_buffer=CircularBuffer{Int32}(5),
+ best_found_energy=-1000, initial_energy=0)
+
+batch = [d1, d2]
 
 input_node_feature_count::Int = 3
 edge_feature_dim::Int = 1
@@ -51,18 +66,25 @@ common = GNNChain(
   )
 vhead = Dense(hidden_dim2 => 1, tanh)
 phead = Dense(hidden_dim2 => node_count)
+hp = GNN_HP()
+nn = GNN_Net(GameSpec(), hp)
 
-loader = Flux.DataLoader(batch, batchsize=2, shuffle=false, collate=true)
+Network.evaluate_batch(nn, batch)
 
 
-for g in loader
-    g_out = common(g) # size = [hidden_dim2, 1] ?
-    v = vhead(g_out.gdata.u)
-    p = phead(g_out.gdata.u)
-end
 
-# # FORWARD PASS
-# g = common(input_graph) # size = [hidden_dim2, 1]
-# v = vhead(g.gdata.u)
-# p = phead(g.gdata.u)
+
+# loader = Flux.DataLoader(batch, batchsize=2, shuffle=false, collate=true)
+
+
+# for g in loader
+#     g_out = common(g) # size = [hidden_dim2, 1] ?
+#     v = vhead(g_out.gdata.u)
+#     p = phead(g_out.gdata.u)
+# end
+
+# # # FORWARD PASS
+# # g = common(input_graph) # size = [hidden_dim2, 1]
+# # v = vhead(g.gdata.u)
+# # p = phead(g.gdata.u)
 

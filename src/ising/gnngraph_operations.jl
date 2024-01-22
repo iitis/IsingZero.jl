@@ -6,7 +6,7 @@ function encode_gnngraph(g::GNNGraph)
     num_edges = g.num_edges
     node_feature_size = size(g.ndata.x, 1)
     edge_feature_size = size(g.edata.e, 1)
-
+    @assert typeof([num_nodes, num_edges, node_feature_size, edge_feature_size]) == Vector{Int}
     # Flatten node and edge features and convert to Float32
     node_features = Float32.(vec(g.ndata.x))
     edge_features = Float32.(vec(g.edata.e))
@@ -27,8 +27,14 @@ function decode_gnngraph(encoded_vector)
     meta_data_start = 1
     meta_data_end = 4
 
+    # meta_vec = encoded_vector[meta_data_start:meta_data_end]
+    # meta_is_int = floor.(meta_vec) !== meta_vec
+    # if meta_is_int 
+    # @show encoded_vector[meta_data_start:meta_data_end]
+    # end
     num_nodes, num_edges, node_feature_size, edge_feature_size = Int[encoded_vector[meta_data_start:meta_data_end]...]
-    
+    @assert typeof([num_nodes, num_edges, node_feature_size, edge_feature_size]) == Vector{Int}
+
     # Calculate indices for slicing the vector
     node_feature_start = meta_data_end + 1
     node_feature_end = meta_data_end + num_nodes * node_feature_size
