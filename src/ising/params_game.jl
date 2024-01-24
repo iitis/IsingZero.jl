@@ -43,8 +43,8 @@ learning = LearningParams(
   rewards_renormalization=1,
   l2_regularization=1e-4,
   optimiser=Adam(lr=1e-4),
-  batch_size=16,
-  loss_computation_batch_size=17,
+  batch_size=16, # Chcemy jak największy
+  loss_computation_batch_size=17, # Trzeba dopasować do treningu
   nonvalidity_penalty=0.3,
   min_checkpoints_per_epoch=1,
   max_batches_per_checkpoint=5_000,
@@ -58,8 +58,8 @@ params = Params(
   memory_analysis=nothing,
   #   ternary_outcome=false,
   use_symmetries=false,
-  use_ranked_reward=true,
-  ranked_reward_alpha=0.75,
+  # use_ranked_reward=true,
+  # ranked_reward_alpha=0.75,
   mem_buffer_size=PLSchedule(80_000))
 
 benchmark_sim = SimParams(

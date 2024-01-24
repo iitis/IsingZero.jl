@@ -52,7 +52,7 @@ common = GNNChain(
 vhead = Dense(hidden_dim2 => 1, tanh)
 phead = Dense(hidden_dim2 => node_count)
 
-loader = Flux.DataLoader(batch, batchsize=2, shuffle=false, collate=true)
+loader = Flux.DataLoader(batch, batchsize=2, shuffle=false)
 
 
 for g in loader

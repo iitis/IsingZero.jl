@@ -41,18 +41,19 @@ function GNN_Net(gspec::AbstractGameSpec, hparams::GNN_HP)
 end
 
 
-function convert_input(nn::GNN_Net, input::Union{Tuple, NamedTuple})
-    @show input
-    return input
-end
+# function convert_input(nn::GNN_Net, input::Union{Tuple, NamedTuple})
+#     @show input
+#     return input
+# end
 
 function Network.forward(nn::GNN_Net, state)
   # @show size(state)
   batch_size = size(state, 2)
+  # @show size(state), sum(state)
   graphs = [decode_gnngraph(state[:, i]) for i in 1:batch_size]
-  loader = Flux.DataLoader(graphs, shuffle=false, collate=true, batchsize=batch_size)
-  pred_batch = first(loader) 
-  c = nn.common(pred_batch)
+  # loader = Flux.DataLoader(graphs, shuffle=false, collate=true, batchsize=batch_size)
+  # pred_batch = first(loader) 
+  c = nn.common(graphs) 
   v = nn.vhead(c.gdata.u)
   p_linear = nn.phead(c.gdata.u)
   p = softmax(p_linear)
