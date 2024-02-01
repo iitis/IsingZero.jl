@@ -1,4 +1,5 @@
 using GraphNeuralNetworks: GNNGraph
+using CUDA
 
 function encode_gnngraph(g::GNNGraph)
     # Header: num_nodes, num_edges, and size of node and edge features
@@ -32,7 +33,7 @@ function decode_gnngraph(encoded_vector)
     # if meta_is_int 
     # @show encoded_vector[meta_data_start:meta_data_end]
     # end
-    num_nodes, num_edges, node_feature_size, edge_feature_size = Int[encoded_vector[meta_data_start:meta_data_end]...]
+    CUDA.@allowscalar num_nodes, num_edges, node_feature_size, edge_feature_size = Int[encoded_vector[meta_data_start:meta_data_end]...]
     @assert typeof([num_nodes, num_edges, node_feature_size, edge_feature_size]) == Vector{Int}
 
     # Calculate indices for slicing the vector
@@ -52,9 +53,9 @@ function decode_gnngraph(encoded_vector)
     edata = reshape(encoded_vector[edge_features_start:edge_features_end], (edge_feature_size, num_edges))
 
     # Reconstruct adjacency matrix
-    sources = Int[encoded_vector[sources_start:sources_end]...]
-    targets = Int[encoded_vector[targets_start:targets_end]...]
-    weights = Int[encoded_vector[weights_start:weights_end]...]
+    CUDA.@allowscalar sources = Int[encoded_vector[sources_start:sources_end]...]
+    CUDA.@allowscalar targets = Int[encoded_vector[targets_start:targets_end]...]
+    CUDA.@allowscalar weights = Int[encoded_vector[weights_start:weights_end]...]
 
     # Reconstruct GNNGraph
     return GNNGraph((sources, targets, weights), ndata=ndata, edata=edata)

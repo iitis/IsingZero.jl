@@ -3,6 +3,7 @@ using GraphNeuralNetworks
 using Statistics
 using AlphaZero: Network
 using DataStructures: CircularBuffer
+using CUDA
 
 include("dataset.jl")
 include("gnngraph_operations.jl")
@@ -11,6 +12,7 @@ include("game.jl")
 include("params_game.jl")
 include("params_gnn.jl")
 
+device = CUDA.functional() ? Flux.gpu : Flux.cpu;
 
 function rand_adj_matrix(n::Int, p::Float64=0.5)
     A = zeros(Int, n, n)
@@ -63,9 +65,9 @@ common = GNNChain(
     GATConv((hidden_dim1, edge_feature_dim) => hidden_dim2, relu, add_self_loops=false),
     GATConv((hidden_dim2, edge_feature_dim) => hidden_dim2, relu, add_self_loops=false),
     GlobalPool(mean)
-  )
-vhead = Dense(hidden_dim2 => 1, tanh)
-phead = Dense(hidden_dim2 => node_count)
+  ) |> Flux.gpu
+vhead = Dense(hidden_dim2 => 1, tanh) |> Flux.gpu
+phead = Dense(hidden_dim2 => node_count) |> Flux.gpu
 hp = GNN_HP()
 nn = GNN_Net(GameSpec(), hp)
 

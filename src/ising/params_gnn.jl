@@ -30,6 +30,7 @@ end
 function GNN_Net(gspec::AbstractGameSpec, hparams::GNN_HP)
   common = GNNChain(
     GATConv((hparams.input_node_feature_count, hparams.edge_feature_dim) => hparams.hidden_dim1, relu, add_self_loops=false),
+    GATConv((hparams.hidden_dim1, hparams.edge_feature_dim) => hparams.hidden_dim1, relu, add_self_loops=false),
     GATConv((hparams.hidden_dim1, hparams.edge_feature_dim) => hparams.hidden_dim2, relu, add_self_loops=false),
     GATConv((hparams.hidden_dim2, hparams.edge_feature_dim) => hparams.hidden_dim2, relu, add_self_loops=false),
     GlobalPool(mean)
@@ -76,4 +77,4 @@ end
 
 netparams = GNN_HP()
 
-Network.on_gpu(nn::GNN_Net) = false
+Network.on_gpu(nn::GNN_Net) = true
