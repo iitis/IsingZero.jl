@@ -59,8 +59,8 @@ params = Params(
   memory_analysis=nothing,
   #   ternary_outcome=false,
   use_symmetries=false,
-  use_ranked_reward=true,
-  ranked_reward_alpha=0.75,
+  # use_ranked_reward=true,
+  # ranked_reward_alpha=0.75,
   mem_buffer_size=PLSchedule(80_000))
 
 benchmark_sim = SimParams(
