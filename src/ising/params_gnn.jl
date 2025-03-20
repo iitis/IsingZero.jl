@@ -2,6 +2,7 @@ using Base: load_InteractiveUtils
 using GraphNeuralNetworks
 using AlphaZero: NetLib
 using Statistics: mean
+import MLUtils
 
 
 mutable struct GNN_Net <: NetLib.TwoHeadNetwork
@@ -53,8 +54,8 @@ function Network.forward(nn::GNN_Net, state)
   # @show size(state), sum(state)
   graphs = [decode_gnngraph(state[:, i]) for i in 1:batch_size]
   # loader = Flux.DataLoader(graphs, shuffle=false, collate=true, batchsize=batch_size)
-  # pred_batch = first(loader) 
-  c = nn.common(graphs) 
+  # pred_batch = first(loader)
+  c = nn.common(MLUtils.batch(graphs)) 
   v = nn.vhead(c.gdata.u)
   p_linear = nn.phead(c.gdata.u)
   p = softmax(p_linear)

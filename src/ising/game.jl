@@ -213,7 +213,7 @@ end
 
 function GI.render(env::GameEnv)
   "RL.render"
-  println("env.x = $(env.x); env.time = $(env.time); env.best_found_energy = $(env.best_found_energy); env.current = $(energy(env.x, Q)); env.tabu_buffer=$(env.tabu_buffer)")
+  println("env.x = $(env.x); env.time = $(env.time); env.best_found_energy = $(env.best_found_energy); env.tabu_buffer=$(env.tabu_buffer)")
 end
 
 function GI.read_state(spec::GameSpec)

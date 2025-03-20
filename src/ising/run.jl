@@ -18,10 +18,12 @@ name = "QuboZero:$(experiment_name)"
 experiment = Experiment(name, GameSpec(), params, GNN_Net, netparams, benchmark)
 
 # @show "test_game"
-# Scripts.test_game(experiment)
-# Scripts.test_game(experiment)
+Scripts.test_game(experiment)
+Scripts.test_game(experiment)
+Scripts.dummy_run(experiment)
 # @show "train"
-Scripts.train(experiment)
+# Scripts.train(experiment)
+Scripts.play(experiment) 
 # @show "explore"
 # Scripts.play(experiment) 
 
